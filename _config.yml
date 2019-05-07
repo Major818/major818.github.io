@@ -10,7 +10,7 @@ title:  major
 subtitle: 少年辛苦终身事，莫向光阴惰寸功
 name: major 
 email: major818@163.com
-description: 本站是major的技术分享博客。内容涵盖生活故事、Java后端技术、Spring Boot、Spring Cloud、微服务架构、大数据演进、高可用架构、中间件使用、系统监控等相关的研究与知识分享。
+description: 本站是major的技术分享博客。内容涵盖生活故事、Java后端技术、Spring Boot、Spring Cloud、微服务架构、高可用架构、中间件使用、系统监控等相关的研究与知识分享。
 keywords: major,Spring,Spring Boot,Spring Cloud,MongoDB,Jvm,Docker,生活故事,架构,大数据,一线,FastDFS,开发者,编程,代码,开源,IT网站,Developer,Programmer,Coder,Geek,IT技术博客,Java,Python,数据库,sql,
 encoding: "utf-8"
 favicon: favicon.png 
