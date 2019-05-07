@@ -1,0 +1,175 @@
+---
+layout: post
+title: ConcurrentModificationException
+category: java
+tags: [java]
+keywords: List、ConcurrentModificationException、Iterator、迭代器、增加for循环
+---
+## 1.异常的源代码位置
+
+最近在写代码的时候遇到`java.util.ConcurrentModificationException`这么个异常，经过翻看源代码觉得这个问题有点意思。
+
+我的需求是这样的：在遍历集合的时候需要动态的去修改里面的元素，如以下Demo:
+
+```java
+public static void main(String args[]) {
+		List<String> list = new ArrayList<String>();
+		list.add("str1");
+		list.add("str2");
+		list.add("str3");
+		list.add("str4");
+		list.add("str5");
+
+		for (String item : list) {
+			if ("str5".equals(item))
+				list.remove("str5");
+		}
+	}
+```
+
+结果抛出这样的异常：
+
+![](https://www.major818.com/assets/images/2019/java/ConcurrentModificationException.png)
+
+经过查看源代码发现抛出该异常的地方位于`ArrayList`成员内部类 `Itr`的`heckForComodification`方法中。
+
+```java
+  final void checkForComodification() {
+            if (modCount != expectedModCount)
+                throw new ConcurrentModificationException();
+        }
+```
+该方法只有短短两行代码 只要变量 `modCount` 和`expectedModCount`不相等就会抛出`ConcurrentModificationException()`异常。
+
+那么`modCount`和`expectedModCount`这两个成员变量又代表什么意思呢？从字面意思也可以猜个七七八八。通过翻译变量的注解可知，`modCount`表示这个集合被修改（增删改）的次数，`expectedModCount`表示该集合希望被修改的次数。
+
+## 2.异常的原因
+
+知道了异常的位置所在就可以对该问题进行深扒了，首先我们知道了这个异常是从`Itr`这个类中抛出来的。
+
+那我们来看看`Itr`类的具体代码：
+
+```java
+ private class Itr implements Iterator<E> {
+        int cursor;       // index of next element to return
+        int lastRet = -1; // index of last element returned; -1 if no such
+        int expectedModCount = modCount;
+
+        Itr() {}
+
+        public boolean hasNext() {
+            return cursor != size;
+        }
+
+        @SuppressWarnings("unchecked")
+        public E next() {
+            checkForComodification();
+            int i = cursor;
+            if (i >= size)
+                throw new NoSuchElementException();
+            Object[] elementData = ArrayList.this.elementData;
+            if (i >= elementData.length)
+                throw new ConcurrentModificationException();
+            cursor = i + 1;
+            return (E) elementData[lastRet = i];
+        }
+
+        public void remove() {
+            if (lastRet < 0)
+                throw new IllegalStateException();
+            checkForComodification();
+
+            try {
+                ArrayList.this.remove(lastRet);
+                cursor = lastRet;
+                lastRet = -1;
+                expectedModCount = modCount;
+            } catch (IndexOutOfBoundsException ex) {
+                throw new ConcurrentModificationException();
+            }
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public void forEachRemaining(Consumer<? super E> consumer) {
+            Objects.requireNonNull(consumer);
+            final int size = ArrayList.this.size;
+            int i = cursor;
+            if (i >= size) {
+                return;
+            }
+            final Object[] elementData = ArrayList.this.elementData;
+            if (i >= elementData.length) {
+                throw new ConcurrentModificationException();
+            }
+            while (i != size && modCount == expectedModCount) {
+                consumer.accept((E) elementData[i++]);
+            }
+            // update once at end of iteration to reduce heap write traffic
+            cursor = i;
+            lastRet = i - 1;
+            checkForComodification();
+        }
+
+        final void checkForComodification() {
+            if (modCount != expectedModCount)
+                throw new ConcurrentModificationException();
+        }
+    }
+```
+从源码可以看出`Itr`实现了`Iterator`接口，而`Iterator`是集合的迭代器。
+
+在这里首先大家得知道在我们使用增强`for`去遍历集合时其实底层是委托`Iterator`去实现的,集合可以使用增强for也是因为集合拥有自己的迭代器。
+
+简单介绍以下该类中的成员： `cursor`表示迭代器在迭代过程中的下一个元素的索引，`lastRet`表示最后一个元素的索引，`hasNext()`方法用于在迭代的过程判断后面还有没有元素，`next()`方法用于获取下一个元素，在该类初始化时并将`modCount`赋值给了`expectedModCount`。
+
+
+那又是什么原因导致`modCount` 和 `expectedModCount`不相等的呢？毋庸置疑肯定是在调用`remove(Object o)`方法的时候，我们不妨跟进去看一下。
+
+```java
+public boolean remove(Object o) {
+        if (o == null) {
+            for (int index = 0; index < size; index++)
+                if (elementData[index] == null) {
+                    fastRemove(index);
+                    return true;
+                }
+        } else {
+            for (int index = 0; index < size; index++)
+                if (o.equals(elementData[index])) {
+                    fastRemove(index);
+                    return true;
+                }
+        }
+        return false;
+    }
+```
+
+我们发现该方法最终调用了 `fastRemove(index)`方法。
+
+```java
+private void fastRemove(int index) {
+        modCount++;
+        int numMoved = size - index - 1;
+        if (numMoved > 0)
+            System.arraycopy(elementData, index+1, elementData, index,
+                             numMoved);
+        elementData[--size] = null; // clear to let GC do its work
+    }
+```
+
+看到这里我就明白了，原来是在这将`modCount`变量增加了1 才导致`modCount` 和 `expectedModCount`不相等的。通过迭代器去遍历元素时`next()`方法都会先调用 `checkForComodification()`方法去检查这两个变量是否相等不相等就会抛出`java.util.ConcurrentModificationException`异常来。
+  
+为什么要这样做呢？当然是为了并发安全喽
+
+## 3.如何排除异常
+
+知道问题出在调用集合迭代器造成的，我们的解决方法也就出来了。
+
+(1) 使用普通`for`循环去遍历
+
+(2) 通过观察`Itr`类中有一个成员`remove()`方法，该方法在最后又重新将`modCount`赋值给了`expectedModCount`，所以我们也可以使用迭代器为我们提供的`remove()`方法去动态的删除元素。
+
+
+
+
