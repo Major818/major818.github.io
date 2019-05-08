@@ -10,9 +10,14 @@
                 <span class="octicon octicon-calendar"></span> {{ page.date | date: "%Y/%m/%d" }}
                 {% endif %}
             </span>
+             <span id="busuanzi_container_page_pv">
+ 				浏览量:<span id="busuanzi_value_page_pv"></span>
+			</span>
         </div>
     </div>
 </section>
+<!-- 浏览量统计-->
+	<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
 <script>
     $(document).ready(function(){
 
