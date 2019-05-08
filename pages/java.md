@@ -19,10 +19,10 @@ permalink: /java
                     <div class="posts-content">
                         <span class="posts-list-meta">{{ post.date | date: "%Y-%m-%d" }}</span>
                         <a class="posts-list-name bubble-float-left" href="{{ site.url }}{{ post.url }}">{{ post.title }}</a>
-                        <span id="busuanzi_container_page_pv">
+                        <span class='circle'></span>
+                         <span id="busuanzi_container_page_pv">
  						 浏览量:<span id="busuanzi_value_page_pv"></span>
 						</span>
-                        <span class='circle'></span>
                     </div>
                 </li>
                 {% endif %}
