@@ -38,9 +38,10 @@ RDB 是一种快照存储持久化方式，具体就是将 Redis 某一时刻的
 save 命令：是一个同步操作。
 
 
-
       # 同步数据到磁盘上 
        >save 
+
+![](http://www.major818.com/assets/images/2019/database/redis-save.png)
 
 当客户端向服务器发送 Save 命令请求进行持久化时，服务器会阻塞 Save 命令之后的其他客户端的请求，直到数据同步完成。
 
